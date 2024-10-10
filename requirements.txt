@@ -1,0 +1,7 @@
+streamlit
+easyocr
+Pillow
+numpy
+concurrent.futures
+deep_translator
+pyperclip
