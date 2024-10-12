@@ -2,16 +2,23 @@ import streamlit as st
 import easyocr
 from PIL import Image
 import numpy as np
-import concurrent.futures
+import langdetect
 from deep_translator import GoogleTranslator
 import pyperclip
 
 def recognize_text(image, languages):
     """Recognize text from an image using EasyOCR."""
     reader = easyocr.Reader(languages, gpu=False)
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        result = executor.submit(reader.readtext, image)
-    return "\n".join([text[1] for text in result.result()])
+    result = reader.readtext(image)
+    return "\n".join([text[1] for text in result])
+
+def detect_language(text):
+    """Detect the language of the text."""
+    try:
+        language = langdetect.detect(text)
+        return language
+    except langdetect.lang_detect_exception.LangDetectException:
+        return "Unknown"
 
 def translate_text(text, dest_language):
     """Translate text to the specified destination language using Deep Translator."""
@@ -66,35 +73,67 @@ def main():
 
     if page == "Text Recognition":
         st.title("Text Recognition")
-        uploaded_image = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
-        if uploaded_image is not None:
-            # Display the uploaded image
-            image = Image.open(uploaded_image)
-            st.image(image, caption='Uploaded Image', use_column_width=True)
+        capture_option = st.selectbox("Select an option:", ["Upload an image", "Take a photo"])
+        if capture_option == "Upload an image":
+            uploaded_image = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
+            if uploaded_image is not None:
+                # Display the uploaded image
+                image = Image.open(uploaded_image)
+                st.image(image, caption='Uploaded Image', use_column_width=True)
 
-            # Convert the image to a format suitable for EasyOCR
-            image_np = np.array(image)
+                # Recognize text
+                if selected_languages:
+                    extracted_text = recognize_text(np.array(image), [languages[lang] for lang in selected_languages])
+                else:
+                    extracted_text = recognize_text(np.array(image), [languages[default_language]])
 
-            # Recognize text
-            if selected_languages:
-                extracted_text = recognize_text(image_np, [languages[lang] for lang in selected_languages])
-            else:
-                extracted_text = recognize_text(image_np, [languages[default_language]])
-            st.subheader("Extracted Text:")
-            st.write(extracted_text)
-            if st.button("Copy Extracted Text"):
-                pyperclip.copy(extracted_text)
-                st.write("Copied to clipboard!")
+                # Detect language
+                detected_language = detect_language(extracted_text)
+                st.subheader("Detected Language:")
+                st.write(detected_language)
+
+                st.subheader("Extracted Text:")
+                st.write(extracted_text)
+                if st.button("Copy Extracted Text"):
+                    pyperclip.copy(extracted_text)
+                    st.write("Copied to clipboard!")
+
+        elif capture_option == "Take a photo":
+            image = st.camera_input("Take a photo")
+            if image is not None:
+                # Convert the image to a format suitable for EasyOCR
+                image = Image.open(image)
+
+                # Recognize text
+                if selected_languages:
+                    extracted_text = recognize_text(np.array(image), [languages[lang] for lang in selected_languages])
+                else:
+                    extracted_text = recognize_text(np.array(image), [languages[default_language]])
+
+                # Detect language
+                detected_language = detect_language(extracted_text)
+                st.subheader("Detected Language:")
+                st.write(detected_language)
+
+                st.subheader("Extracted Text:")
+                st.write(extracted_text)
+                if st.button("Copy Extracted Text"):
+                    pyperclip.copy(extracted_text)
+                    st.write("Copied to clipboard!")
 
     elif page == "Text Translation":
         st.title("Text Translation")
-        translation_options = ["Enter text to translate", "Upload an image to translate"]
+        translation_options = ["Enter text to translate", "Upload an image to translate", "Take a photo to translate "]
         translation_option = st.selectbox("Select a translation option:", translation_options)
 
         if translation_option == "Enter text to translate":
             input_text = st.text_area("Enter text to translate:")
-            translate_button = st.button("Translate")
             if input_text:
+                detected_language = detect_language(input_text)
+                st.subheader("Detected Language:")
+                st.write(detected_language)
+
+                translate_button = st.button("Translate")
                 if translate_button:
                     translated_text = translate_text(input_text, languages[translation_language])
                     st.subheader("Translated Text:")
@@ -110,14 +149,41 @@ def main():
                 image = Image.open(uploaded_image)
                 st.image(image, caption='Uploaded Image', use_column_width=True)
 
+                # Recognize text
+                if selected_languages:
+                    extracted_text = recognize_text(np.array(image), [languages[lang] for lang in selected_languages])
+                else:
+                    extracted_text = recognize_text(np.array(image), [languages[default_language]])
+
+                # Detect language
+                detected_language = detect_language(extracted_text)
+                st.subheader("Detected Language:")
+                st.write(detected_language)
+
+                # Translate text
+                translated_text = translate_text(extracted_text, languages[translation_language])
+                st.subheader("Translated Text:")
+                st.write(translated_text)
+                if st.button("Copy Translated Text"):
+                    pyperclip.copy(translated_text)
+                    st.write("Copied to clipboard!")
+
+        elif translation_option == "Take a photo to translate":
+            image = st.camera_input("Take a photo to translate")
+            if image is not None:
                 # Convert the image to a format suitable for EasyOCR
-                image_np = np.array(image)
+                image = Image.open(image)
 
                 # Recognize text
                 if selected_languages:
-                    extracted_text = recognize_text(image_np, [languages[lang] for lang in selected_languages])
+                    extracted_text = recognize_text(np.array(image), [languages[lang] for lang in selected_languages])
                 else:
-                    extracted_text = recognize_text(image_np, [languages [default_language]])
+                    extracted_text = recognize_text(np.array(image), [languages[default_language]])
+
+                # Detect language
+                detected_language = detect_language(extracted_text)
+                st.subheader("Detected Language:")
+                st.write(detected_language)
 
                 # Translate text
                 translated_text = translate_text(extracted_text, languages[translation_language])
