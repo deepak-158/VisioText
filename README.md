@@ -1,5 +1,4 @@
 # Text recognition and translation
-# Image Text Extraction and Translation
 
 This Streamlit app allows users to extract text from images and translate it into various languages.
 
