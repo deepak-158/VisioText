@@ -220,7 +220,7 @@ def main():
                         st.write("Copied to clipboard!")
 
                 except Exception as e:
-                    st.error("Error translating image: " + str(e)
+                    st.error("Error translating image: " + str(e))
 
 if __name__ == "__main__":
     main()
