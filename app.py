@@ -67,13 +67,22 @@ def main():
 
     st.sidebar.markdown("---")
     st.sidebar.title("About the Creator")
-    st.sidebar.info(
-        """
-        **Creator:** Deepak Shukla  
-        **Contact:** [dipakshukla158@gmail.com](mailto:your.email@example.com)  
-        **GitHub:** [https://github.com/deepak-158](https://github.com/YourGitHub)  
-        **LinkedIn:** [www.linkedin.com/in/deepak-shukla-27a60628a](https://www.linkedin.com/in/YourLinkedIn)
-        """
+    # st.sidebar.info(
+    #     """
+    #     **Creator:** Deepak Shukla
+    #     **Contact:** [dipakshukla158@gmail.com](mailto:your.email@example.com)
+    #     **GitHub:** [https://github.com/deepak-158](https://github.com/YourGitHub)
+    #     **LinkedIn:** [www.linkedin.com/in/deepak-shukla-27a60628a](https://www.linkedin.com/in/YourLinkedIn)
+    #     """
+    st.sidebar.info(""" 
+    **TEAM NUMBER :** 98
+    \n**TEAM MEMBERS**
+    \nJiya Kathuria (23BCE11153)
+    \nArnav Majithia (23BCE11196)
+    \nDeepak Shukla (23BCE11422)  
+    \nDevya Saigal (23BCE10961)
+    \nKousumi Mondal (23BCE11147)
+    """
     )
 
     if page == "Text Recognition":
