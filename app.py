@@ -42,11 +42,12 @@ def main():
     )
 
     # Sidebar for navigation and language selection
-    st.sidebar.title("**VisioText**")
+    st.sidebar.title("****VisioText****")
+    st.sidebar.subheader("Where Images Meet Text")
     pages = ["Text Recognition", "Text Translation"]
     page = st.sidebar.selectbox("Options:", pages)
 
-    st.sidebar.title("")
+
     languages = {
         "English": "en",
         "French": "fr",
