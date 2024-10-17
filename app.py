@@ -42,11 +42,11 @@ def main():
     )
 
     # Sidebar for navigation and language selection
-    st.sidebar.title("Navigation")
+    st.sidebar.title("**VisioText**")
     pages = ["Text Recognition", "Text Translation"]
-    page = st.sidebar.selectbox("Select a page:", pages)
+    page = st.sidebar.selectbox("Options:", pages)
 
-    st.sidebar.title("Options")
+    st.sidebar.title("")
     languages = {
         "English": "en",
         "French": "fr",
@@ -61,10 +61,10 @@ def main():
         "Korean": "ko"
     }
 
+    st.sidebar.markdown("---")
     selected_languages = st.sidebar.multiselect("Select Image languages:", list(languages.keys()))
     default_language = st.sidebar.selectbox("Select a default Image language:", list(languages.keys()))
     translation_language = st.sidebar.selectbox("Select translation language:", list(languages.keys()))
-
     st.sidebar.markdown("---")
     st.sidebar.title("About the Creator")
     # st.sidebar.info(
