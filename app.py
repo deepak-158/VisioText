@@ -9,7 +9,7 @@ import pyperclip
 def recognize_text(image, languages):
     """Recognize text from an image using EasyOCR."""
     try:
-        reader = easyocr.Reader(languages, gpu=False)
+        reader = easyocr.Reader(languages, gpu=True)
         result = reader.readtext(image)
         return "\n".join([text[1] for text in result])
     except Exception as e:
