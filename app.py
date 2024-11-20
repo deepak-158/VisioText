@@ -1,19 +1,22 @@
 import streamlit as st
+import language_tool_python
 import easyocr
-from PIL import Image
+from PIL import Image, ImageDraw
 import numpy as np
 import langdetect
 from deep_translator import GoogleTranslator
 import pyperclip
 
-def recognize_text(image, languages):
-    """Recognize text from an image using EasyOCR."""
+
+def recognize_text(image):
+    """Recognize text from an image using EasyOCR and return the results with bounding boxes."""
     try:
-        reader = easyocr.Reader(languages, gpu=True)
+        reader = easyocr.Reader(['en'], gpu=False)
         result = reader.readtext(image)
-        return "\n".join([text[1] for text in result])
+        return result
     except Exception as e:
         return str(e)
+
 
 def detect_language(text):
     """Detect the language of the text."""
@@ -25,6 +28,7 @@ def detect_language(text):
     except Exception as e:
         return str(e)
 
+
 def translate_text(text, dest_language):
     """Translate text to the specified destination language using Deep Translator."""
     try:
@@ -33,20 +37,40 @@ def translate_text(text, dest_language):
     except Exception as e:
         return "Translation failed: " + str(e)
 
+
+def check_grammar(text):
+    """Check grammar, spelling, and punctuation using LanguageTool."""
+    try:
+        tool = language_tool_python.LanguageTool('en-US')
+        matches = tool.check(text)
+        corrected_text = language_tool_python.utils.correct(text, matches)
+        return corrected_text, matches
+    except Exception as e:
+        return str(e), []
+
+
+def draw_boxes_on_image(image, results):
+    """Draw bounding boxes around recognized text on the image."""
+    draw = ImageDraw.Draw(image)
+    for result in results:
+        box = result[0]  # Coordinates of the bounding box
+        draw.rectangle([tuple(box[0]), tuple(box[2])], outline="red", width=3)  # Draw a red rectangle around the text
+    return image
+
+
 def main():
     st.set_page_config(
-        page_title="Image Text Extraction and Translation",
+        page_title="Image Text Extraction, Translation, and Grammar Check",
         page_icon="",
         layout="wide",
         initial_sidebar_state="expanded"
     )
 
-    # Sidebar for navigation and language selection
+    # Sidebar for navigation
     st.sidebar.title("****VisioText****")
     st.sidebar.subheader("Where Images Meet Text")
-    pages = ["Text Recognition", "Text Translation"]
+    pages = ["Text Recognition", "Text Translation", "Grammar Check"]
     page = st.sidebar.selectbox("Options:", pages)
-
 
     languages = {
         "English": "en",
@@ -62,19 +86,9 @@ def main():
         "Korean": "ko"
     }
 
-    st.sidebar.markdown("---")
-    selected_languages = st.sidebar.multiselect("Select Image languages:", list(languages.keys()))
-    default_language = st.sidebar.selectbox("Select a default Image language:", list(languages.keys()))
     translation_language = st.sidebar.selectbox("Select translation language:", list(languages.keys()))
     st.sidebar.markdown("---")
     st.sidebar.title("About the Creator")
-    # st.sidebar.info(
-    #     """
-    #     **Creator:** Deepak Shukla
-    #     **Contact:** [dipakshukla158@gmail.com](mailto:your.email@example.com)
-    #     **GitHub:** [https://github.com/deepak-158](https://github.com/YourGitHub)
-    #     **LinkedIn:** [www.linkedin.com/in/deepak-shukla-27a60628a](https://www.linkedin.com/in/YourLinkedIn)
-    #     """
     st.sidebar.info(""" 
     **TEAM NUMBER :** 98
     \n**TEAM MEMBERS**
@@ -84,7 +98,7 @@ def main():
     \nDevya Saigal (23BCE10961)
     \nKousumi Mondal (23BCE11147)
     """
-    )
+                    )
 
     if page == "Text Recognition":
         st.title("Text Recognition")
@@ -97,19 +111,16 @@ def main():
                     st.image(image, caption='Uploaded Image', use_column_width=True)
 
                     # Recognize text
-                    if selected_languages:
-                        extracted_text = recognize_text(np.array(image), [languages[lang] for lang in selected_languages])
-                    else:
-                        extracted_text = recognize_text(np.array(image), [languages[default_language]])
+                    results = recognize_text(np.array(image))
 
-                    # Detect language
-                    detected_language = detect_language(extracted_text)
-
-                    st.subheader("Detected Language:")
-                    st.write(detected_language)
-
+                    extracted_text = "\n".join([text[1] for text in results])
                     st.subheader("Extracted Text:")
                     st.write(extracted_text)
+
+                    # Highlight text in the image
+                    highlighted_image = draw_boxes_on_image(image.copy(), results)
+                    st.image(highlighted_image, caption="Highlighted Text", use_column_width=True)
+
                     if st.button("Copy Extracted Text"):
                         pyperclip.copy(extracted_text)
                         st.write("Copied to clipboard!")
@@ -124,19 +135,16 @@ def main():
                     image = Image.open(image)
 
                     # Recognize text
-                    if selected_languages:
-                        extracted_text = recognize_text(np.array(image), [languages[lang] for lang in selected_languages])
-                    else:
-                        extracted_text = recognize_text(np.array(image), [languages[default_language]])
+                    results = recognize_text(np.array(image))
 
-                    # Detect language
-                    detected_language = detect_language(extracted_text)
-
-                    st.subheader("Detected Language:")
-                    st.write(detected_language)
-
+                    extracted_text = "\n".join([text[1] for text in results])
                     st.subheader("Extracted Text:")
                     st.write(extracted_text)
+
+                    # Highlight text in the image
+                    highlighted_image = draw_boxes_on_image(image.copy(), results)
+                    st.image(highlighted_image, caption="Highlighted Text", use_column_width=True)
+
                     if st.button("Copy Extracted Text"):
                         pyperclip.copy(extracted_text)
                         st.write("Copied to clipboard!")
@@ -179,16 +187,15 @@ def main():
                     st.image(image, caption='Uploaded Image', use_column_width=True)
 
                     # Recognize text
-                    if selected_languages:
-                        extracted_text = recognize_text(np.array(image), [languages[lang] for lang in selected_languages])
-                    else:
-                        extracted_text = recognize_text(np.array(image), [languages[default_language]])
+                    results = recognize_text(np.array(image))
 
-                    # Detect language
-                    detected_language = detect_language(extracted_text)
+                    extracted_text = "\n".join([text[1] for text in results])
+                    st.subheader("Extracted Text:")
+                    st.write(extracted_text)
 
-                    st.subheader("Detected Language:")
-                    st.write(detected_language)
+                    # Highlight text in the image
+                    highlighted_image = draw_boxes_on_image(image.copy(), results)
+                    st.image(highlighted_image, caption="Highlighted Text", use_column_width=True)
 
                     # Translate text
                     translated_text = translate_text(extracted_text, languages[translation_language])
@@ -209,16 +216,15 @@ def main():
                     image = Image.open(image)
 
                     # Recognize text
-                    if selected_languages:
-                        extracted_text = recognize_text(np.array(image), [languages[lang] for lang in selected_languages])
-                    else:
-                        extracted_text = recognize_text(np.array(image), [languages[default_language]])
+                    results = recognize_text(np.array(image))
 
-                    # Detect language
-                    detected_language = detect_language(extracted_text)
+                    extracted_text = "\n".join([text[1] for text in results])
+                    st.subheader("Extracted Text:")
+                    st.write(extracted_text)
 
-                    st.subheader("Detected Language:")
-                    st.write(detected_language)
+                    # Highlight text in the image
+                    highlighted_image = draw_boxes_on_image(image.copy(), results)
+                    st.image(highlighted_image, caption="Highlighted Text", use_column_width=True)
 
                     # Translate text
                     translated_text = translate_text(extracted_text, languages[translation_language])
@@ -232,5 +238,33 @@ def main():
                 except Exception as e:
                     st.error("Error translating image: " + str(e))
 
-if __name__ == "__main__":
+    elif page == "Grammar Check":
+        st.title("Grammar, Spelling, and Punctuation Check")
+
+        # Text input area for grammar check
+        input_text = st.text_area("Enter text to check grammar, spelling, and punctuation:")
+
+        if input_text:
+            try:
+                corrected_text, matches = check_grammar(input_text)
+
+                st.subheader("Corrected Text:")
+                st.write(corrected_text)
+
+                if st.button("Copy Corrected Text"):
+                    pyperclip.copy(corrected_text)
+                    st.write("Copied to clipboard!")
+
+                if matches:
+                    st.subheader("Grammar Issues Detected:")
+                    for match in matches:
+                        st.write(f"Issue: {match.message}")
+                        st.write(f"Correction Suggestion: {match.replacements}")
+                        st.write(f"Context: {match.context}")
+
+            except Exception as e:
+                st.error("Error checking grammar: " + str(e))
+
+
+if __name__ == '__main__':
     main()
