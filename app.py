@@ -239,7 +239,7 @@ def main():
                     st.error("Error translating image: " + str(e))
 
     elif page == "Grammar Check":
-        st.title("Grammar, Spelling, and Punctuation Check")
+        st.title("Check For The Grammar")
 
         # Text input area for grammar check
         input_text = st.text_area("Enter text to check grammar, spelling, and punctuation:")
