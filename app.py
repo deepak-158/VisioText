@@ -6,7 +6,9 @@ import numpy as np
 import langdetect
 from deep_translator import GoogleTranslator
 import pyperclip
-
+from gtts import gTTS
+import os
+import tempfile
 
 def recognize_text(image):
     """Recognize text from an image using EasyOCR and return the results with bounding boxes."""
@@ -16,7 +18,6 @@ def recognize_text(image):
         return result
     except Exception as e:
         return str(e)
-
 
 def detect_language(text):
     """Detect the language of the text."""
@@ -28,7 +29,6 @@ def detect_language(text):
     except Exception as e:
         return str(e)
 
-
 def translate_text(text, dest_language):
     """Translate text to the specified destination language using Deep Translator."""
     try:
@@ -36,7 +36,6 @@ def translate_text(text, dest_language):
         return translated_text
     except Exception as e:
         return "Translation failed: " + str(e)
-
 
 def check_grammar(text):
     """Check grammar, spelling, and punctuation using LanguageTool."""
@@ -48,7 +47,6 @@ def check_grammar(text):
     except Exception as e:
         return str(e), []
 
-
 def draw_boxes_on_image(image, results):
     """Draw bounding boxes around recognized text on the image."""
     draw = ImageDraw.Draw(image)
@@ -57,6 +55,17 @@ def draw_boxes_on_image(image, results):
         draw.rectangle([tuple(box[0]), tuple(box[2])], outline="red", width=3)  # Draw a red rectangle around the text
     return image
 
+def text_to_speech(text):
+    """Convert text to speech and play it."""
+    try:
+        tts = gTTS(text=text, lang='en')
+        with tempfile.NamedTemporaryFile(delete=True) as fp:
+            tts.save(f"{fp.name}.mp3")
+            os.system(f"start {fp.name}.mp3")  # For Windows
+            # os.system(f"afplay {fp.name}.mp3")  # For macOS
+            # os.system(f"mpg321 {fp.name}.mp3")  # For Linux
+    except Exception as e:
+        st.error("Error in text-to-speech: " + str(e))
 
 def main():
     st.set_page_config(
@@ -125,6 +134,9 @@ def main():
                         pyperclip.copy(extracted_text)
                         st.write("Copied to clipboard!")
 
+                    if st.button("Read Extracted Text"):
+                        text_to_speech(extracted_text)
+
                 except Exception as e:
                     st.error("Error processing image: " + str(e))
 
@@ -148,6 +160,9 @@ def main():
                     if st.button("Copy Extracted Text"):
                         pyperclip.copy(extracted_text)
                         st.write("Copied to clipboard!")
+
+                    if st.button("Read Extracted Text"):
+                        text_to_speech(extracted_text)
 
                 except Exception as e:
                     st.error("Error processing image: " + str(e))
@@ -175,6 +190,9 @@ def main():
                         if st.button("Copy Translated Text"):
                             pyperclip.copy(translated_text)
                             st.write("Copied to clipboard!")
+
+                        if st.button("Read Translated Text"):
+                            text_to_speech(translated_text)
 
                 except Exception as e:
                     st.error("Error translating text: " + str(e))
@@ -206,6 +224,9 @@ def main():
                         pyperclip.copy(translated_text)
                         st.write("Copied to clipboard!")
 
+                    if st.button("Read Translated Text"):
+                        text_to_speech(translated_text)
+
                 except Exception as e:
                     st.error("Error translating image: " + str(e))
 
@@ -235,6 +256,9 @@ def main():
                         pyperclip.copy(translated_text)
                         st.write("Copied to clipboard!")
 
+                    if st.button("Read Translated Text"):
+                        text_to_speech(translated_text)
+
                 except Exception as e:
                     st.error("Error translating image: " + str(e))
 
@@ -254,6 +278,9 @@ def main():
                 if st.button("Copy Corrected Text"):
                     pyperclip.copy(corrected_text)
                     st.write("Copied to clipboard!")
+
+                if st.button("Read Corrected Text"):
+                    text_to_speech(corrected_text)
 
                 if matches:
                     st.subheader("Grammar Issues Detected:")
