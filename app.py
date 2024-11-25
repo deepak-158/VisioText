@@ -83,6 +83,7 @@ def main():
 
     languages = {
         "English": "en",
+        "Hindi": "hi",  # Added Hindi
         "French": "fr",
         "Spanish": "es",
         "German": "de",
