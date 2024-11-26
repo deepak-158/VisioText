@@ -128,7 +128,7 @@ def main():
                     st.write(extracted_text)
 
                     # Highlight text in the image
-                    highlighted_image = draw_boxes_on_image(image.copy(), results)
+                    higshlighted_image = draw_boxes_on_image(image.copy(), results)
                     st.image(highlighted_image, caption="Highlighted Text", use_column_width=True)
 
                     if st.button("Copy Extracted Text"):
