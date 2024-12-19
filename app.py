@@ -9,6 +9,41 @@ import pyperclip
 from gtts import gTTS
 import os
 import tempfile
+import base64
+
+
+def autoplay_audio(file_path: str):
+    """Autoplay the audio file using HTML audio element."""
+    with open(file_path, "rb") as f:
+        data = f.read()
+        b64 = base64.b64encode(data).decode()
+        md = f"""
+            <audio autoplay>
+            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+            </audio>
+            """
+        st.markdown(md, unsafe_allow_html=True)
+
+
+def text_to_speech(text, lang='en'):
+    """Convert text to speech and play it in the web browser."""
+    try:
+        with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as fp:
+            tts = gTTS(text=text, lang=lang)
+            tts.save(fp.name)
+
+            # Open and read the audio file
+            with open(fp.name, 'rb') as audio_file:
+                audio_bytes = audio_file.read()
+
+            # Display audio player in Streamlit
+            st.audio(audio_bytes, format='audio/mp3')
+
+            # Clean up the temporary file
+            os.unlink(fp.name)
+    except Exception as e:
+        st.error(f"Error in text-to-speech: {str(e)}")
+
 
 def recognize_text(image):
     """Recognize text from an image using EasyOCR and return the results with bounding boxes."""
@@ -18,6 +53,7 @@ def recognize_text(image):
         return result
     except Exception as e:
         return str(e)
+
 
 def detect_language(text):
     """Detect the language of the text."""
@@ -29,6 +65,7 @@ def detect_language(text):
     except Exception as e:
         return str(e)
 
+
 def translate_text(text, dest_language):
     """Translate text to the specified destination language using Deep Translator."""
     try:
@@ -36,6 +73,7 @@ def translate_text(text, dest_language):
         return translated_text
     except Exception as e:
         return "Translation failed: " + str(e)
+
 
 def check_grammar(text):
     """Check grammar, spelling, and punctuation using LanguageTool."""
@@ -47,25 +85,132 @@ def check_grammar(text):
     except Exception as e:
         return str(e), []
 
+
 def draw_boxes_on_image(image, results):
     """Draw bounding boxes around recognized text on the image."""
     draw = ImageDraw.Draw(image)
     for result in results:
         box = result[0]  # Coordinates of the bounding box
-        draw.rectangle([tuple(box[0]), tuple(box[2])], outline="red", width=3)  # Draw a red rectangle around the text
+        draw.rectangle([tuple(box[0]), tuple(box[2])], outline="red", width=3)
     return image
 
-def text_to_speech(text):
-    """Convert text to speech and play it."""
+
+def process_image(image_file):
+    """Process uploaded or captured image for text recognition."""
+    if image_file is not None:
+        try:
+            image = Image.open(image_file)
+            st.image(image, caption='Image', use_column_width=True)
+
+            results = recognize_text(np.array(image))
+            if isinstance(results, str):
+                st.error(f"Error recognizing text: {results}")
+                return
+
+            extracted_text = "\n".join([text[1] for text in results])
+            st.subheader("Extracted Text:")
+            st.write(extracted_text)
+
+            highlighted_image = draw_boxes_on_image(image.copy(), results)
+            st.image(highlighted_image, caption="Highlighted Text", use_column_width=True)
+
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Copy Extracted Text"):
+                    pyperclip.copy(extracted_text)
+                    st.success("Copied to clipboard!")
+            with col2:
+                if st.button("Read Extracted Text"):
+                    text_to_speech(extracted_text)
+
+        except Exception as e:
+            st.error(f"Error processing image: {str(e)}")
+
+
+def process_text_translation(text, target_lang):
+    """Process text translation."""
     try:
-        tts = gTTS(text=text, lang='en')
-        with tempfile.NamedTemporaryFile(delete=True) as fp:
-            tts.save(f"{fp.name}.mp3")
-            os.system(f"start {fp.name}.mp3")  # For Windows
-            # os.system(f"afplay {fp.name}.mp3")  # For macOS
-            # os.system(f"mpg321 {fp.name}.mp3")  # For Linux
+        detected_language = detect_language(text)
+        st.subheader("Detected Language:")
+        st.write(detected_language)
+
+        if st.button("Translate"):
+            translated_text = translate_text(text, target_lang)
+            st.subheader("Translated Text:")
+            st.write(translated_text)
+
+            if st.button("Copy Translated Text"):
+                pyperclip.copy(translated_text)
+                st.success("Copied to clipboard!")
+
     except Exception as e:
-        st.error("Error in text-to-speech: " + str(e))
+        st.error(f"Error translating text: {str(e)}")
+
+
+def process_image_translation(image_file, target_lang):
+    """Process image translation."""
+    if image_file is not None:
+        try:
+            image = Image.open(image_file)
+            st.image(image, caption='Image', use_column_width=True)
+
+            results = recognize_text(np.array(image))
+            if isinstance(results, str):
+                st.error(f"Error recognizing text: {results}")
+                return
+
+            extracted_text = "\n".join([text[1] for text in results])
+            st.subheader("Extracted Text:")
+            st.write(extracted_text)
+
+            highlighted_image = draw_boxes_on_image(image.copy(), results)
+            st.image(highlighted_image, caption="Highlighted Text", use_column_width=True)
+
+            translated_text = translate_text(extracted_text, target_lang)
+            st.subheader("Translated Text:")
+            st.write(translated_text)
+
+            if st.button("Copy Translated Text"):
+                pyperclip.copy(translated_text)
+                st.success("Copied to clipboard!")
+
+        except Exception as e:
+            st.error(f"Error translating image: {str(e)}")
+
+
+def process_grammar_check(text):
+    """Process grammar check."""
+    try:
+        if st.button("Check Grammar"):
+            corrected_text, matches = check_grammar(text)
+
+            # Display original text
+            st.subheader("Original Text:")
+            st.write(text)
+
+            # Display corrected text
+            st.subheader("Corrected Text:")
+            st.write(corrected_text)
+
+            if st.button("Copy Corrected Text"):
+                pyperclip.copy(corrected_text)
+                st.success("Copied to clipboard!")
+
+            # Display differences
+            if text != corrected_text:
+                st.subheader("Changes Made:")
+                st.info("The following changes were made to improve the text:")
+                for match in matches:
+                    with st.expander(f"Issue: {match.message}"):
+                        st.write(f"Original: {match.context}")
+                        st.write(f"Suggestion: {', '.join(match.replacements)}")
+                        st.write(f"Rule ID: {match.ruleId}")
+            else:
+                st.success("No grammar issues found in the text!")
+
+    except Exception as e:
+        st.error(f"Error checking grammar: {str(e)}")
+
 
 def main():
     st.set_page_config(
@@ -75,15 +220,28 @@ def main():
         initial_sidebar_state="expanded"
     )
 
+    # Add custom CSS for better button styling
+    st.markdown("""
+        <style>
+        .stButton > button {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        .stExpander {
+            margin-bottom: 10px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
     # Sidebar for navigation
-    st.sidebar.title("****VisioText****")
+    st.sidebar.title("VisioText")
     st.sidebar.subheader("Where Images Meet Text")
     pages = ["Text Recognition", "Text Translation", "Grammar Check"]
     page = st.sidebar.selectbox("Options:", pages)
 
     languages = {
         "English": "en",
-        "Hindi": "hi",  # Added Hindi
+        "Hindi": "hi",
         "French": "fr",
         "Spanish": "es",
         "German": "de",
@@ -99,74 +257,27 @@ def main():
     translation_language = st.sidebar.selectbox("Select translation language:", list(languages.keys()))
     st.sidebar.markdown("---")
     st.sidebar.title("About the Creator")
-    st.sidebar.info(""" 
-    **TEAM NUMBER :** 98
+    st.sidebar.info("""
+    **TEAM NUMBER:** 98
     \n**TEAM MEMBERS**
     \nJiya Kathuria (23BCE11153)
     \nArnav Majithia (23BCE11196)
-    \nDeepak Shukla (23BCE11422)  
+    \nDeepak Shukla (23BCE11422)
     \nDevya Saigal (23BCE10961)
     \nKousumi Mondal (23BCE11147)
-    """
-                    )
+    """)
 
     if page == "Text Recognition":
         st.title("Text Recognition")
         capture_option = st.selectbox("Select an option:", ["Upload an image", "Take a photo"])
+
         if capture_option == "Upload an image":
             uploaded_image = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
-            if uploaded_image is not None:
-                try:
-                    image = Image.open(uploaded_image)
-                    st.image(image, caption='Uploaded Image', use_column_width=True)
-
-                    # Recognize text
-                    results = recognize_text(np.array(image))
-
-                    extracted_text = "\n".join([text[1] for text in results])
-                    st.subheader("Extracted Text:")
-                    st.write(extracted_text)
-
-                    # Highlight text in the image
-                    higshlighted_image = draw_boxes_on_image(image.copy(), results)
-                    st.image(highlighted_image, caption="Highlighted Text", use_column_width=True)
-
-                    if st.button("Copy Extracted Text"):
-                        pyperclip.copy(extracted_text)
-                        st.write("Copied to clipboard!")
-
-                    if st.button("Read Extracted Text"):
-                        text_to_speech(extracted_text)
-
-                except Exception as e:
-                    st.error("Error processing image: " + str(e))
+            process_image(uploaded_image)
 
         elif capture_option == "Take a photo":
             image = st.camera_input("Take a photo")
-            if image is not None:
-                try:
-                    image = Image.open(image)
-
-                    # Recognize text
-                    results = recognize_text(np.array(image))
-
-                    extracted_text = "\n".join([text[1] for text in results])
-                    st.subheader("Extracted Text:")
-                    st.write(extracted_text)
-
-                    # Highlight text in the image
-                    highlighted_image = draw_boxes_on_image(image.copy(), results)
-                    st.image(highlighted_image, caption="Highlighted Text", use_column_width=True)
-
-                    if st.button("Copy Extracted Text"):
-                        pyperclip.copy(extracted_text)
-                        st.write("Copied to clipboard!")
-
-                    if st.button("Read Extracted Text"):
-                        text_to_speech(extracted_text)
-
-                except Exception as e:
-                    st.error("Error processing image: " + str(e))
+            process_image(image)
 
     elif page == "Text Translation":
         st.title("Text Translation")
@@ -176,122 +287,21 @@ def main():
         if translation_option == "Enter text to translate":
             input_text = st.text_area("Enter text to translate:")
             if input_text:
-                try:
-                    detected_language = detect_language(input_text)
-
-                    st.subheader("Detected Language:")
-                    st.write(detected_language)
-
-                    translate_button = st.button("Translate")
-                    if translate_button:
-                        translated_text = translate_text(input_text, languages[translation_language])
-
-                        st.subheader("Translated Text:")
-                        st.write(translated_text)
-                        if st.button("Copy Translated Text"):
-                            pyperclip.copy(translated_text)
-                            st.write("Copied to clipboard!")
-
-                        if st.button("Read Translated Text"):
-                            text_to_speech(translated_text)
-
-                except Exception as e:
-                    st.error("Error translating text: " + str(e))
+                process_text_translation(input_text, languages[translation_language])
 
         elif translation_option == "Upload an image to translate":
             uploaded_image = st.file_uploader("Upload an image to translate", type=["jpg", "jpeg", "png"])
-            if uploaded_image is not None:
-                try:
-                    image = Image.open(uploaded_image)
-                    st.image(image, caption='Uploaded Image', use_column_width=True)
-
-                    # Recognize text
-                    results = recognize_text(np.array(image))
-
-                    extracted_text = "\n".join([text[1] for text in results])
-                    st.subheader("Extracted Text:")
-                    st.write(extracted_text)
-
-                    # Highlight text in the image
-                    highlighted_image = draw_boxes_on_image(image.copy(), results)
-                    st.image(highlighted_image, caption="Highlighted Text", use_column_width=True)
-
-                    # Translate text
-                    translated_text = translate_text(extracted_text, languages[translation_language])
-
-                    st.subheader("Translated Text:")
-                    st.write(translated_text)
-                    if st.button("Copy Translated Text"):
-                        pyperclip.copy(translated_text)
-                        st.write("Copied to clipboard!")
-
-                    if st.button("Read Translated Text"):
-                        text_to_speech(translated_text)
-
-                except Exception as e:
-                    st.error("Error translating image: " + str(e))
+            process_image_translation(uploaded_image, languages[translation_language])
 
         elif translation_option == "Take a photo to translate":
             image = st.camera_input("Take a photo to translate")
-            if image is not None:
-                try:
-                    image = Image.open(image)
-
-                    # Recognize text
-                    results = recognize_text(np.array(image))
-
-                    extracted_text = "\n".join([text[1] for text in results])
-                    st.subheader("Extracted Text:")
-                    st.write(extracted_text)
-
-                    # Highlight text in the image
-                    highlighted_image = draw_boxes_on_image(image.copy(), results)
-                    st.image(highlighted_image, caption="Highlighted Text", use_column_width=True)
-
-                    # Translate text
-                    translated_text = translate_text(extracted_text, languages[translation_language])
-
-                    st.subheader("Translated Text:")
-                    st.write(translated_text)
-                    if st.button("Copy Translated Text"):
-                        pyperclip.copy(translated_text)
-                        st.write("Copied to clipboard!")
-
-                    if st.button("Read Translated Text"):
-                        text_to_speech(translated_text)
-
-                except Exception as e:
-                    st.error("Error translating image: " + str(e))
+            process_image_translation(image, languages[translation_language])
 
     elif page == "Grammar Check":
-        st.title("Check For The Grammar")
-
-        # Text input area for grammar check
+        st.title("Grammar Check")
         input_text = st.text_area("Enter text to check grammar, spelling, and punctuation:")
-
         if input_text:
-            try:
-                corrected_text, matches = check_grammar(input_text)
-
-                st.subheader("Corrected Text:")
-                st.write(corrected_text)
-
-                if st.button("Copy Corrected Text"):
-                    pyperclip.copy(corrected_text)
-                    st.write("Copied to clipboard!")
-
-                if st.button("Read Corrected Text"):
-                    text_to_speech(corrected_text)
-
-                if matches:
-                    st.subheader("Grammar Issues Detected:")
-                    for match in matches:
-                        st.write(f"Issue: {match.message}")
-                        st.write(f"Correction Suggestion: {match.replacements}")
-                        st.write(f"Context: {match.context}")
-
-            except Exception as e:
-                st.error("Error checking grammar: " + str(e))
+            process_grammar_check(input_text)
 
 
 if __name__ == '__main__':
