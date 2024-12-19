@@ -86,12 +86,32 @@ def check_grammar(text):
         return str(e), []
 
 
-def draw_boxes_on_image(image, results):
+def draw_boxes_on_image(image, results, original_size):
     """Draw bounding boxes around recognized text on the image."""
     draw = ImageDraw.Draw(image)
+
+    # Get current image dimensions
+    current_width, current_height = image.size
+    original_width, original_height = original_size
+
+    # Calculate scaling factors
+    width_scale = current_width / original_width
+    height_scale = current_height / original_height
+
     for result in results:
-        box = result[0]  # Coordinates of the bounding box
-        draw.rectangle([tuple(box[0]), tuple(box[2])], outline="red", width=3)
+        # Get coordinates from the result
+        box = result[0]  # [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
+
+        # Scale the coordinates
+        scaled_box = []
+        for point in box:
+            scaled_x = point[0] * width_scale
+            scaled_y = point[1] * height_scale
+            scaled_box.append((int(scaled_x), int(scaled_y)))
+
+        # Draw the polygon using scaled coordinates
+        draw.polygon(scaled_box, outline="red", width=2)
+
     return image
 
 
@@ -99,28 +119,50 @@ def process_image(image_file):
     """Process uploaded or captured image for text recognition."""
     if image_file is not None:
         try:
+            # Open and get original image size
             image = Image.open(image_file)
-            st.image(image, caption='Image', use_column_width=True)
+            original_size = image.size
 
+            # Create two columns for side-by-side display
+            col1, col2 = st.columns(2)
+
+            # Resize image for preview
+            preview_width = 400  # You can adjust this value
+            aspect_ratio = image.height / image.width
+            preview_height = int(preview_width * aspect_ratio)
+            preview_image = image.resize((preview_width, preview_height))
+
+            # Display original image in first column
+            with col1:
+                st.subheader("Original Image")
+                st.image(preview_image, use_column_width=True)
+
+            # Process the original image for text recognition
             results = recognize_text(np.array(image))
             if isinstance(results, str):
                 st.error(f"Error recognizing text: {results}")
                 return
 
             extracted_text = "\n".join([text[1] for text in results])
+
+            # Display highlighted image in second column
+            highlighted_image = draw_boxes_on_image(preview_image.copy(), results, original_size)
+            with col2:
+                st.subheader("Detected Text")
+                st.image(highlighted_image, use_column_width=True)
+
+            # Display extracted text below the images
             st.subheader("Extracted Text:")
             st.write(extracted_text)
 
-            highlighted_image = draw_boxes_on_image(image.copy(), results)
-            st.image(highlighted_image, caption="Highlighted Text", use_column_width=True)
-
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("Copy Extracted Text"):
+            # Create two columns for buttons
+            btn_col1, btn_col2 = st.columns(2)
+            with btn_col1:
+                if st.button("Copy Extracted Text", key="copy_extracted"):
                     pyperclip.copy(extracted_text)
                     st.success("Copied to clipboard!")
-            with col2:
-                if st.button("Read Extracted Text"):
+            with btn_col2:
+                if st.button("Read Extracted Text", key="read_extracted"):
                     text_to_speech(extracted_text)
 
         except Exception as e:
@@ -134,14 +176,19 @@ def process_text_translation(text, target_lang):
         st.subheader("Detected Language:")
         st.write(detected_language)
 
-        if st.button("Translate"):
-            translated_text = translate_text(text, target_lang)
-            st.subheader("Translated Text:")
-            st.write(translated_text)
+        # Create a container for the translation results
+        translation_container = st.container()
 
-            if st.button("Copy Translated Text"):
-                pyperclip.copy(translated_text)
-                st.success("Copied to clipboard!")
+        if st.button("Translate", key="translate_text"):
+            translated_text = translate_text(text, target_lang)
+            with translation_container:
+                st.subheader("Translated Text:")
+                st.write(translated_text)
+
+                # Create a separate button for copying
+                if st.button("Copy Translated Text", key="copy_translated_text"):
+                    pyperclip.copy(translated_text)
+                    st.success("Copied to clipboard!")
 
     except Exception as e:
         st.error(f"Error translating text: {str(e)}")
@@ -151,28 +198,56 @@ def process_image_translation(image_file, target_lang):
     """Process image translation."""
     if image_file is not None:
         try:
+            # Open and get original image size
             image = Image.open(image_file)
-            st.image(image, caption='Image', use_column_width=True)
+            original_size = image.size
 
+            # Create two columns for side-by-side display
+            col1, col2 = st.columns(2)
+
+            # Resize image for preview
+            preview_width = 400  # You can adjust this value
+            aspect_ratio = image.height / image.width
+            preview_height = int(preview_width * aspect_ratio)
+            preview_image = image.resize((preview_width, preview_height))
+
+            # Display original image in first column
+            with col1:
+                st.subheader("Original Image")
+                st.image(preview_image, use_column_width=True)
+
+            # Process the original image for text recognition
             results = recognize_text(np.array(image))
             if isinstance(results, str):
                 st.error(f"Error recognizing text: {results}")
                 return
 
             extracted_text = "\n".join([text[1] for text in results])
-            st.subheader("Extracted Text:")
-            st.write(extracted_text)
 
-            highlighted_image = draw_boxes_on_image(image.copy(), results)
-            st.image(highlighted_image, caption="Highlighted Text", use_column_width=True)
+            # Display highlighted image in second column
+            highlighted_image = draw_boxes_on_image(preview_image.copy(), results, original_size)
+            with col2:
+                st.subheader("Detected Text")
+                st.image(highlighted_image, use_column_width=True)
 
+            # Display extracted text
+            text_container = st.container()
+            with text_container:
+                st.subheader("Extracted Text:")
+                st.write(extracted_text)
+                if st.button("Copy Extracted Text", key="copy_img_extracted"):
+                    pyperclip.copy(extracted_text)
+                    st.success("Copied to clipboard!")
+
+            # Display translated text
+            translation_container = st.container()
             translated_text = translate_text(extracted_text, target_lang)
-            st.subheader("Translated Text:")
-            st.write(translated_text)
-
-            if st.button("Copy Translated Text"):
-                pyperclip.copy(translated_text)
-                st.success("Copied to clipboard!")
+            with translation_container:
+                st.subheader("Translated Text:")
+                st.write(translated_text)
+                if st.button("Copy Translated Text", key="copy_img_translated"):
+                    pyperclip.copy(translated_text)
+                    st.success("Copied to clipboard!")
 
         except Exception as e:
             st.error(f"Error translating image: {str(e)}")
@@ -181,32 +256,38 @@ def process_image_translation(image_file, target_lang):
 def process_grammar_check(text):
     """Process grammar check."""
     try:
-        if st.button("Check Grammar"):
+        # Create containers for different sections
+        results_container = st.container()
+
+        if st.button("Check Grammar", key="check_grammar"):
             corrected_text, matches = check_grammar(text)
 
-            # Display original text
-            st.subheader("Original Text:")
-            st.write(text)
+            with results_container:
+                # Display original text
+                st.subheader("Original Text:")
+                st.write(text)
+                if st.button("Copy Original Text", key="copy_original"):
+                    pyperclip.copy(text)
+                    st.success("Copied to clipboard!")
 
-            # Display corrected text
-            st.subheader("Corrected Text:")
-            st.write(corrected_text)
+                # Display corrected text
+                st.subheader("Corrected Text:")
+                st.write(corrected_text)
+                if st.button("Copy Corrected Text", key="copy_corrected"):
+                    pyperclip.copy(corrected_text)
+                    st.success("Copied to clipboard!")
 
-            if st.button("Copy Corrected Text"):
-                pyperclip.copy(corrected_text)
-                st.success("Copied to clipboard!")
-
-            # Display differences
-            if text != corrected_text:
-                st.subheader("Changes Made:")
-                st.info("The following changes were made to improve the text:")
-                for match in matches:
-                    with st.expander(f"Issue: {match.message}"):
-                        st.write(f"Original: {match.context}")
-                        st.write(f"Suggestion: {', '.join(match.replacements)}")
-                        st.write(f"Rule ID: {match.ruleId}")
-            else:
-                st.success("No grammar issues found in the text!")
+                # Display differences
+                if text != corrected_text:
+                    st.subheader("Changes Made:")
+                    st.info("The following changes were made to improve the text:")
+                    for match in matches:
+                        with st.expander(f"Issue: {match.message}"):
+                            st.write(f"Original: {match.context}")
+                            st.write(f"Suggestion: {', '.join(match.replacements)}")
+                            st.write(f"Rule ID: {match.ruleId}")
+                else:
+                    st.success("No grammar issues found in the text!")
 
     except Exception as e:
         st.error(f"Error checking grammar: {str(e)}")
