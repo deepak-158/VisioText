@@ -12,7 +12,7 @@ This Streamlit app allows users to extract text from images and translate it int
 ## Installation
 1. Clone the repository:
    ```bash
-   git clone https://github.com/deepak-158/text-recognition.git
+   git clone https://github.com/deepak-158/VisioText.git
    ```
 2. Navigate to the project directory:
    ```bash
