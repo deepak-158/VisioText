@@ -1,4 +1,4 @@
-# Text recognition and translation
+# VisioText
 
 This Streamlit app allows users to extract text from images and translate it into various languages.
 
